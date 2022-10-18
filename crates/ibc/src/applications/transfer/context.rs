@@ -10,6 +10,7 @@ use crate::applications::transfer::relay::on_timeout_packet::process_timeout_pac
 use crate::applications::transfer::{PrefixedCoin, PrefixedDenom, VERSION};
 use crate::core::ics04_channel::channel::{Counterparty, Order};
 use crate::core::ics04_channel::context::{ChannelKeeper, ChannelReader};
+use crate::core::ics04_channel::handler::ModuleExtras;
 use crate::core::ics04_channel::msgs::acknowledgement::Acknowledgement as GenericAcknowledgement;
 use crate::core::ics04_channel::packet::Packet;
 use crate::core::ics04_channel::Version;
@@ -99,106 +100,90 @@ pub trait Ics20Context:
     type AccountId: TryFrom<Signer>;
 }
 
-fn validate_transfer_channel_params(
+#[allow(clippy::too_many_arguments)]
+pub fn on_chan_open_init(
     ctx: &mut impl Ics20Context,
     order: Order,
+    _connection_hops: &[ConnectionId],
     port_id: &PortId,
     _channel_id: &ChannelId,
+    _counterparty: &Counterparty,
     version: &Version,
-) -> Result<(), Ics20Error> {
+) -> Result<(ModuleExtras, Version), Ics20Error> {
     if order != Order::Unordered {
         return Err(Ics20Error::channel_not_unordered(order));
     }
-
     let bound_port = ctx.get_port()?;
     if port_id != &bound_port {
         return Err(Ics20Error::invalid_port(port_id.clone(), bound_port));
     }
 
-    if version != &Version::ics20() {
+    if !version.is_empty() && version != &Version::ics20() {
         return Err(Ics20Error::invalid_version(version.clone()));
     }
 
-    Ok(())
-}
-
-fn validate_counterparty_version(counterparty_version: &Version) -> Result<(), Ics20Error> {
-    if counterparty_version == &Version::ics20() {
-        Ok(())
-    } else {
-        Err(Ics20Error::invalid_counterparty_version(
-            counterparty_version.clone(),
-        ))
-    }
-}
-
-#[allow(clippy::too_many_arguments)]
-pub fn on_chan_open_init(
-    ctx: &mut impl Ics20Context,
-    _output: &mut ModuleOutputBuilder,
-    order: Order,
-    _connection_hops: &[ConnectionId],
-    port_id: &PortId,
-    channel_id: &ChannelId,
-    _counterparty: &Counterparty,
-    version: &Version,
-) -> Result<(), Ics20Error> {
-    validate_transfer_channel_params(ctx, order, port_id, channel_id, version)
+    Ok((ModuleExtras::empty(), Version::ics20()))
 }
 
 #[allow(clippy::too_many_arguments)]
 pub fn on_chan_open_try(
-    ctx: &mut impl Ics20Context,
-    _output: &mut ModuleOutputBuilder,
+    _ctx: &mut impl Ics20Context,
     order: Order,
     _connection_hops: &[ConnectionId],
-    port_id: &PortId,
-    channel_id: &ChannelId,
+    _port_id: &PortId,
+    _channel_id: &ChannelId,
     _counterparty: &Counterparty,
-    version: &Version,
     counterparty_version: &Version,
-) -> Result<Version, Ics20Error> {
-    validate_transfer_channel_params(ctx, order, port_id, channel_id, version)?;
-    validate_counterparty_version(counterparty_version)?;
-    Ok(Version::ics20())
+) -> Result<(ModuleExtras, Version), Ics20Error> {
+    if order != Order::Unordered {
+        return Err(Ics20Error::channel_not_unordered(order));
+    }
+    if counterparty_version != &Version::ics20() {
+        return Err(Ics20Error::invalid_counterparty_version(
+            counterparty_version.clone(),
+        ));
+    }
+
+    Ok((ModuleExtras::empty(), Version::ics20()))
 }
 
 pub fn on_chan_open_ack(
     _ctx: &mut impl Ics20Context,
-    _output: &mut ModuleOutputBuilder,
     _port_id: &PortId,
     _channel_id: &ChannelId,
     counterparty_version: &Version,
-) -> Result<(), Ics20Error> {
-    validate_counterparty_version(counterparty_version)?;
-    Ok(())
+) -> Result<ModuleExtras, Ics20Error> {
+    if counterparty_version != &Version::ics20() {
+        return Err(Ics20Error::invalid_counterparty_version(
+            counterparty_version.clone(),
+        ));
+    }
+
+    Ok(ModuleExtras::empty())
 }
 
 pub fn on_chan_open_confirm(
     _ctx: &mut impl Ics20Context,
-    _output: &mut ModuleOutputBuilder,
     _port_id: &PortId,
     _channel_id: &ChannelId,
-) -> Result<(), Ics20Error> {
-    Ok(())
+) -> Result<ModuleExtras, Ics20Error> {
+    Ok(ModuleExtras::empty())
 }
 
 pub fn on_chan_close_init(
     _ctx: &mut impl Ics20Context,
-    _output: &mut ModuleOutputBuilder,
     _port_id: &PortId,
     _channel_id: &ChannelId,
-) -> Result<(), Ics20Error> {
+) -> Result<ModuleExtras, Ics20Error> {
     Err(Ics20Error::cant_close_channel())
 }
 
 pub fn on_chan_close_confirm(
     _ctx: &mut impl Ics20Context,
-    _output: &mut ModuleOutputBuilder,
     _port_id: &PortId,
     _channel_id: &ChannelId,
-) -> Result<(), Ics20Error> {
-    Ok(())
+) -> Result<ModuleExtras, Ics20Error> {
+    Ok(ModuleExtras::empty())
 }
 
 pub fn on_recv_packet<Ctx: 'static + Ics20Context>(
