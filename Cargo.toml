@@ -9,3 +9,11 @@ members = [
 exclude = [
     "ci/no-std-check",
 ]
+
+[patch.crates-io]
+ibc-proto = { git = "https://github.com/cosmos/ibc-proto-rs.git", branch = "mikhail/explicit-tendermint-core-ver" }
+tendermint = { git = "https://github.com/informalsystems/tendermint-rs.git", branch = "mikhail/multi-tc-version-support" }
+tendermint-proto = { git = "https://github.com/informalsystems/tendermint-rs.git", branch = "mikhail/multi-tc-version-support" }
+tendermint-light-client-verifier = { git = "https://github.com/informalsystems/tendermint-rs.git", branch = "mikhail/multi-tc-version-support" }
+tendermint-rpc = { git = "https://github.com/informalsystems/tendermint-rs.git", branch = "mikhail/multi-tc-version-support" }
+tendermint-testgen = { git = "https://github.com/informalsystems/tendermint-rs.git", branch = "mikhail/multi-tc-version-support" }
